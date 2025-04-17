@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Empty Box -->
+  <rect x="40" y="60" width="160" height="140" rx="20" fill="url(#gradient1)" stroke="url(#gradient2)" stroke-width="4"/>
+  <path d="M40 120L200 120" stroke="url(#gradient2)" stroke-width="4"/>
+  
+  <!-- Plus Sign -->
+  <circle cx="120" cy="160" r="30" fill="white"/>
+  <path d="M120 140V180" stroke="url(#gradient3)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M100 160H140" stroke="url(#gradient3)" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- Decorative Elements -->
+  <circle cx="60" cy="90" r="10" fill="white"/>
+  <circle cx="90" cy="90" r="10" fill="white"/>
+  <circle cx="120" cy="90" r="10" fill="white"/>
+  
+  <defs>
+    <linearGradient id="gradient1" x1="40" y1="60" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="gradient2" x1="40" y1="60" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#7E22CE"/>
+    </linearGradient>
+    <linearGradient id="gradient3" x1="100" y1="140" x2="140" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#9333EA"/>
+    </linearGradient>
+  </defs>
+</svg> 

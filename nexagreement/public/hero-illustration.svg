@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Elements -->
+  <path d="M400 50C200 50 50 200 50 400C50 600 200 750 400 750" stroke="url(#gradient1)" stroke-width="2" stroke-dasharray="4 4"/>
+  <path d="M400 50C600 50 750 200 750 400C750 600 600 750 400 750" stroke="url(#gradient2)" stroke-width="2" stroke-dasharray="4 4"/>
+  
+  <!-- Central Product Box -->
+  <rect x="300" y="200" width="200" height="200" rx="20" fill="url(#gradient3)" stroke="url(#gradient4)" stroke-width="4"/>
+  
+  <!-- NFT Token -->
+  <circle cx="400" cy="300" r="60" fill="url(#gradient5)" stroke="url(#gradient6)" stroke-width="4"/>
+  <path d="M370 300L390 320L430 280" stroke="white" stroke-width="4"/>
+  
+  <!-- Smart Contract Elements -->
+  <rect x="250" y="450" width="300" height="60" rx="10" fill="url(#gradient7)" stroke="url(#gradient8)" stroke-width="2"/>
+  <circle cx="280" cy="480" r="15" fill="white"/>
+  <circle cx="520" cy="480" r="15" fill="white"/>
+  <path d="M280 480H520" stroke="white" stroke-width="2"/>
+  
+  <!-- Decorative Elements -->
+  <circle cx="200" cy="200" r="20" fill="url(#gradient9)"/>
+  <circle cx="600" cy="200" r="20" fill="url(#gradient9)"/>
+  <circle cx="200" cy="400" r="20" fill="url(#gradient9)"/>
+  <circle cx="600" cy="400" r="20" fill="url(#gradient9)"/>
+  
+  <defs>
+    <linearGradient id="gradient1" x1="50" y1="50" x2="400" y2="750" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#9333EA"/>
+    </linearGradient>
+    <linearGradient id="gradient2" x1="750" y1="50" x2="400" y2="750" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#9333EA"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="gradient3" x1="300" y1="200" x2="500" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="gradient4" x1="300" y1="200" x2="500" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#7E22CE"/>
+    </linearGradient>
+    <linearGradient id="gradient5" x1="340" y1="240" x2="460" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#9333EA"/>
+    </linearGradient>
+    <linearGradient id="gradient6" x1="340" y1="240" x2="460" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#7E22CE"/>
+    </linearGradient>
+    <linearGradient id="gradient7" x1="250" y1="450" x2="550" y2="510" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="gradient8" x1="250" y1="450" x2="550" y2="510" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#7E22CE"/>
+    </linearGradient>
+    <linearGradient id="gradient9" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+  </defs>
+</svg> 

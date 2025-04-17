@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="320" height="320" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Store Front -->
+  <path d="M60 120H260L240 280H80L60 120Z" fill="url(#gradient1)" stroke="url(#gradient2)" stroke-width="4"/>
+  <path d="M40 120L280 120" stroke="url(#gradient2)" stroke-width="4"/>
+  <path d="M40 120C40 120 60 40 160 40C260 40 280 120 280 120" fill="url(#gradient3)" stroke="url(#gradient2)" stroke-width="4"/>
+  
+  <!-- Empty Shelves -->
+  <rect x="100" y="160" width="120" height="20" rx="4" fill="white" stroke="url(#gradient2)" stroke-width="2"/>
+  <rect x="100" y="200" width="120" height="20" rx="4" fill="white" stroke="url(#gradient2)" stroke-width="2"/>
+  <rect x="100" y="240" width="120" height="20" rx="4" fill="white" stroke="url(#gradient2)" stroke-width="2"/>
+  
+  <!-- Plus Sign -->
+  <circle cx="160" cy="200" r="30" fill="white" stroke="url(#gradient2)" stroke-width="4"/>
+  <path d="M160 180V220" stroke="url(#gradient4)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M140 200H180" stroke="url(#gradient4)" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- Decorative Elements -->
+  <circle cx="80" cy="80" r="10" fill="url(#gradient5)"/>
+  <circle cx="160" cy="60" r="10" fill="url(#gradient5)"/>
+  <circle cx="240" cy="80" r="10" fill="url(#gradient5)"/>
+  
+  <defs>
+    <linearGradient id="gradient1" x1="60" y1="120" x2="260" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="gradient2" x1="40" y1="40" x2="280" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#7E22CE"/>
+    </linearGradient>
+    <linearGradient id="gradient3" x1="40" y1="40" x2="280" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="gradient4" x1="140" y1="180" x2="180" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#9333EA"/>
+    </linearGradient>
+    <linearGradient id="gradient5" x1="0" y1="0" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+  </defs>
+</svg> 
