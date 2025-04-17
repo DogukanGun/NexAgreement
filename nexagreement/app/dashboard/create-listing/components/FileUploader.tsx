@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
@@ -77,7 +76,6 @@ export function FileUploader({
               onClick={(e) => {
                 e.stopPropagation();
                 setFile(null);
-                if (onFileUploaded) onFileUploaded(null as any);
               }}
               className="text-red-400 text-sm hover:underline"
             >

@@ -1,7 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-export default function ProductDetails({ params }: { params: { id: string } }) {
+
+
+export default async function ProductDetails() {
+  
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">

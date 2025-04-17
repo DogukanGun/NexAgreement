@@ -1,6 +1,4 @@
-import Link from 'next/link';
 import { PageHeader } from '@/app/components/ui/PageHeader';
-import { Button } from '@/app/components/ui/Button';
 import { EmptyState } from '@/app/components/ui/EmptyState';
 import { ListingItemCard, UserListing } from './components/ListingItemCard';
 

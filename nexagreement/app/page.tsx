@@ -62,7 +62,7 @@ export default function Home() {
             Revolutionary Features
           </h2>
           <div className="grid md:grid-cols-3 gap-12">
-            {features.map((feature, index) => (
+            {features.map((feature) => (
               <div
                 key={feature.title}
                 className="relative bg-gray-800/50 backdrop-blur-xl rounded-2xl p-8 hover:bg-gray-800/80 transition-all duration-300 hover:scale-105"
