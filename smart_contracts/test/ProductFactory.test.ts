@@ -34,6 +34,8 @@ describe("ProductFactory", function () {
       const price = ethers.parseEther("0.5"); // 0.5 ETH
       const royaltyPercentage = 500; // 5%
       const tokenURI = "https://example.com/metadata/1";
+      const category = "Test Category";
+      const ipfsId = "QmHash123";
 
       // Create product
       const tx = await productFactory.connect(seller).createProduct(
@@ -41,7 +43,9 @@ describe("ProductFactory", function () {
         description,
         price,
         royaltyPercentage,
-        tokenURI
+        tokenURI,
+        category,
+        ipfsId
       );
       
       const receipt = await tx.wait();
@@ -75,6 +79,8 @@ describe("ProductFactory", function () {
       expect(await product.seller()).to.equal(seller.address);
       expect(await product.tokenId()).to.equal(tokenId);
       expect(await product.isSold()).to.be.false;
+      expect(await product.category()).to.equal(category);
+      expect(await product.ipfsId()).to.equal(ipfsId);
     });
 
     it("Should mint an NFT when creating a product", async function() {
@@ -84,10 +90,12 @@ describe("ProductFactory", function () {
       const price = ethers.parseEther("0.5");
       const royaltyPercentage = 500;
       const tokenURI = "https://example.com/metadata/1";
+      const category = "Test Category";
+      const ipfsId = "QmHash123";
 
       // Create product
       const tx = await productFactory.connect(seller).createProduct(
-        name, description, price, royaltyPercentage, tokenURI
+        name, description, price, royaltyPercentage, tokenURI, category, ipfsId
       );
       
       const receipt = await tx.wait();
@@ -109,7 +117,7 @@ describe("ProductFactory", function () {
     beforeEach(async function() {
       // Create a product for testing
       const tx = await productFactory.connect(seller).createProduct(
-        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri"
+        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri", "Test Category", "QmHash123"
       );
       const receipt = await tx.wait();
       const event = receipt?.logs.find((log: any) => 
@@ -145,11 +153,11 @@ describe("ProductFactory", function () {
     it("Should handle pagination in getProducts", async function() {
       // Create more products
       await productFactory.connect(seller).createProduct(
-        "Product 2", "Description", ethers.parseEther("0.5"), 500, "uri2"
+        "Product 2", "Description", ethers.parseEther("0.5"), 500, "uri2", "Test Category", "QmHash123"
       );
       
       await productFactory.connect(seller).createProduct(
-        "Product 3", "Description", ethers.parseEther("0.5"), 500, "uri3"
+        "Product 3", "Description", ethers.parseEther("0.5"), 500, "uri3", "Test Category", "QmHash123"
       );
       
       // Test pagination
@@ -173,7 +181,7 @@ describe("ProductFactory", function () {
     beforeEach(async function() {
       // Create a product for testing
       const tx = await productFactory.connect(seller).createProduct(
-        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri"
+        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri", "Test Category", "QmHash123"
       );
       const receipt = await tx.wait();
       const event = receipt?.logs.find((log: any) => 
@@ -238,7 +246,7 @@ describe("ProductFactory", function () {
     beforeEach(async function() {
       // Create a product for testing
       const tx = await productFactory.connect(seller).createProduct(
-        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri"
+        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri", "Test Category", "QmHash123"
       );
       const receipt = await tx.wait();
       const event = receipt?.logs.find((log: any) => 

@@ -11,7 +11,9 @@ import "./ProductNFT.sol";
 contract Product is Ownable {
     // Product details
     string public name;
+    string public category;
     string public description;
+    string public ipfsId;
     uint256 public price;
     address public seller;
     uint256 public tokenId;
@@ -44,7 +46,9 @@ contract Product is Ownable {
         uint256 _royaltyPercentage,
         address _seller,
         uint256 _tokenId,
-        address _productNFT
+        address _productNFT,
+        string memory _category,
+        string memory _ipfsId
     ) Ownable(_seller) {
         name = _name;
         description = _description;
@@ -54,6 +58,8 @@ contract Product is Ownable {
         tokenId = _tokenId;
         productNFT = ProductNFT(_productNFT);
         isSold = false;
+        category = _category;
+        ipfsId = _ipfsId;
     }
     
     /**

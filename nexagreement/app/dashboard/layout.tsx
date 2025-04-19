@@ -24,8 +24,8 @@ export default function DashboardLayout({
       />
 
       {/* Main content */}
-      <main className="container mx-auto px-6 pt-28 pb-16">
-        <div className="animate-fade-in">
+      <main className="pt-28 pb-16">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8 max-w-7xl animate-fade-in">
           {children}
         </div>
       </main>

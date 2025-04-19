@@ -2,6 +2,7 @@ import { PageHeader } from '@/app/components/ui/PageHeader';
 import { Button } from '@/app/components/ui/Button';
 import { StatCard } from './components/StatCard';
 import { ActivityItem, Activity } from './components/ActivityItem';
+import { ProductCount } from '../components/ui/ProductCount';
 
 export default function Dashboard() {
   // Mock data for statistics
@@ -41,44 +42,59 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-full">
       <PageHeader 
         title="Dashboard" 
         description="Manage your agreements and transactions" 
       />
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {stats.map((stat, index) => (
-          <StatCard 
-            key={index}
-            title={stat.title}
-            value={stat.value}
-            href={stat.link}
-          />
-        ))}
+      {/* Top Section with Stats and Blockchain Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12">
+        {/* Blockchain Status */}
+        <div className="lg:col-span-3 xl:col-span-2">
+          <h2 className="text-xl font-semibold mb-4 text-white/90">Blockchain Status</h2>
+          <div className="h-[220px]">
+            <ProductCount />
+          </div>
+        </div>
+        
+        {/* Stats Grid */}
+        <div className="lg:col-span-9 xl:col-span-10">
+          <h2 className="text-xl font-semibold mb-4 text-white/90 lg:opacity-0">Stats</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 h-[220px]">
+            {stats.map((stat, index) => (
+              <StatCard 
+                key={index}
+                title={stat.title}
+                value={stat.value}
+                href={stat.link}
+                className="h-full"
+              />
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="mb-10">
+      <div className="mb-12">
         <h2 className="text-2xl font-bold mb-6 text-white">Quick Actions</h2>
         <div className="flex flex-wrap gap-4">
-          <Button href="/dashboard/marketplace">
+          <Button href="/dashboard/marketplace" variant="primary">
             Browse Marketplace
           </Button>
           <Button href="/dashboard/create-listing" variant="secondary">
             Create New Listing
           </Button>
-          <Button href="/dashboard/purchases" variant="secondary">
+          <Button href="/dashboard/purchases" variant="outline">
             View Purchases
           </Button>
         </div>
       </div>
 
       {/* Recent Activity */}
-      <div>
+      <div className="mb-8">
         <h2 className="text-2xl font-bold mb-6 text-white">Recent Activity</h2>
-        <div className="space-y-4">
+        <div className="space-y-4 max-w-4xl">
           {activities.map((activity) => (
             <ActivityItem 
               key={activity.id}

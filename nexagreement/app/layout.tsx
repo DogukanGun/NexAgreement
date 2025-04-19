@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
+import Connector from "./components/Connector";
+import { WagmiProvider } from './providers/WagmiProvider';
+import { BlockchainProvider } from './providers/BlockchainProvider';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,10 +21,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Navbar />
-        <div className="pt-16">
-          {children}
-        </div>
+        <WagmiProvider>
+          <BlockchainProvider>
+            <Navbar />
+            <div className="pt-16">
+              <Connector>
+                {children}
+              </Connector>
+            </div>
+          </BlockchainProvider>
+        </WagmiProvider>
       </body>
     </html>
   );

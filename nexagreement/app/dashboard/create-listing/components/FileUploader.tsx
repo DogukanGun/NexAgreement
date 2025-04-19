@@ -1,118 +1,209 @@
 'use client';
-import { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
 
-type FileUploaderProps = {
-  onFileUploaded?: (file: File) => void;
-  className?: string;
-  label?: string;
-};
+import { useState, useRef, ChangeEvent } from 'react';
+import { uploadToIPFS } from '@/app/utils/ipfs';
+
+interface FileUploaderProps {
+  onFileUploaded: (url: string) => void;
+  acceptedFileTypes?: string; // Allows customizing accepted file types
+  maxSizeMB?: number; // Allows setting max file size in MB
+}
 
 export function FileUploader({ 
   onFileUploaded, 
-  className = '', 
-  label = 'Upload Document' 
+  acceptedFileTypes = 'application/pdf', 
+  maxSizeMB = 10 
 }: FileUploaderProps) {
-  const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      const selectedFile = acceptedFiles[0];
-      setFile(selectedFile);
-      if (onFileUploaded) {
-        onFileUploaded(selectedFile);
-      }
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
     }
-  }, [onFileUploaded]);
+  };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-    },
-    maxFiles: 1,
-    maxSize: 10485760 // 10MB
-  });
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  };
+
+  const validateFile = (file: File): boolean => {
+    // Check file type
+    if (!file.type.match(acceptedFileTypes)) {
+      setError(`Please select a valid file type (${acceptedFileTypes})`);
+      return false;
+    }
+
+    // Check file size
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > maxSizeMB) {
+      setError(`File size exceeds the ${maxSizeMB}MB limit`);
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleFile = async (file: File) => {
+    setError(null);
+    
+    // Validate file
+    if (!validateFile(file)) {
+      return;
+    }
+
+    setFileName(file.name);
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // Start simulated progress bar for UX feedback
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 5;
+        });
+      }, 300);
+
+      // Upload to IPFS
+      const ipfsUrl = await uploadToIPFS(file);
+      
+      // Finish progress bar
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      setTimeout(() => {
+        onFileUploaded(ipfsUrl);
+        setIsUploading(false);
+      }, 500);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upload file';
+      console.error('Error uploading file:', err);
+      setError(errorMessage);
+      setIsUploading(false);
+      setFileName(null);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
-    <div className={className}>
-      <label className="block text-white font-medium mb-2">
-        {label}
+    <div>
+      <label className="block text-sm font-medium text-white/80 mb-2">
+        Agreement Document (PDF)
       </label>
       <div 
-        {...getRootProps()} 
-        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-          isDragActive 
-            ? 'border-blue-500 bg-blue-500/10' 
-            : 'border-white/10 hover:border-white/20'
+        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+          isDragging 
+            ? 'border-blue-500/50 bg-blue-500/10' 
+            : error 
+              ? 'border-red-500/50 bg-red-500/5' 
+              : 'border-white/20 hover:border-white/30 bg-black/20'
         }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={triggerFileInput}
       >
-        <input {...getInputProps()} />
+        <input 
+          type="file" 
+          ref={fileInputRef}
+          className="hidden" 
+          accept={acceptedFileTypes}
+          onChange={handleFileChange}
+        />
         
-        {file ? (
-          <div className="text-center">
+        {isUploading ? (
+          <div className="py-4">
+            <div className="w-full bg-white/10 rounded-full h-2.5">
+              <div 
+                className="bg-gradient-to-r from-blue-600 to-purple-600 h-2.5 rounded-full transition-all duration-300" 
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+            <p className="mt-2 text-sm text-white/70">Uploading to IPFS... {uploadProgress}%</p>
+            <p className="mt-1 text-xs text-white/50">
+              Your file is being securely stored on the decentralized IPFS network
+            </p>
+          </div>
+        ) : fileName ? (
+          <div className="flex items-center justify-center space-x-2">
             <svg 
-              xmlns="http://www.w3.org/2000/svg" 
+              className="h-6 w-6 text-green-400" 
               fill="none" 
-              viewBox="0 0 24 24" 
-              strokeWidth={1.5} 
               stroke="currentColor" 
-              className="w-10 h-10 mx-auto text-green-400 mb-3"
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
             >
               <path 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
-                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                strokeWidth="2" 
+                d="M5 13l4 4L19 7"
               />
             </svg>
-            <p className="text-white font-medium mb-1">{file.name}</p>
-            <p className="text-white/60 text-sm mb-2">
-              {(file.size / 1024 / 1024).toFixed(2)} MB
-            </p>
-            <button 
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setFile(null);
-              }}
-              className="text-red-400 text-sm hover:underline"
-            >
-              Remove file
-            </button>
+            <span className="text-sm text-white/90">{fileName}</span>
           </div>
         ) : (
           <>
             <svg 
-              xmlns="http://www.w3.org/2000/svg" 
+              className="mx-auto h-12 w-12 text-white/40" 
               fill="none" 
-              viewBox="0 0 24 24" 
-              strokeWidth={1.5} 
               stroke="currentColor" 
-              className="w-12 h-12 mx-auto text-white/40 mb-4"
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
             >
               <path 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
-                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" 
+                strokeWidth="2" 
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="text-white/60 mb-2">
-              Drag and drop your document here, or click to browse
+            <p className="mt-2 text-sm text-white/70">
+              Drag and drop your PDF agreement, or click to select
             </p>
-            <p className="text-white/40 text-sm mb-4">
-              Supported formats: PDF, DOCX (Max size: 10MB)
+            <p className="mt-1 text-xs text-white/50">
+              PDF format only, max {maxSizeMB}MB
             </p>
-            <button 
-              type="button" 
-              className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-lg transition-colors"
-            >
-              Browse Files
-            </button>
           </>
         )}
       </div>
+      
+      {error && (
+        <div className="mt-2 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+      
+      {fileName && !isUploading && !error && (
+        <div className="mt-2 text-sm text-green-400">
+          File uploaded to IPFS successfully
+        </div>
+      )}
     </div>
   );
 } 

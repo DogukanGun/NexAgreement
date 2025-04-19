@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { Card, CardTitle, CardDescription, CardFooter } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { ipfsToHttp } from '@/app/utils/ipfs';
 
 export type Listing = {
   id: number;
@@ -9,47 +9,71 @@ export type Listing = {
   description: string;
   seller: string;
   createdAt: string;
-  category?: string;
+  category: string;
+  ipfsHash: string;
 };
 
-type ListingCardProps = {
+export function ListingCard({ 
+  listing, 
+  showCategory = false 
+}: { 
   listing: Listing;
   showCategory?: boolean;
-  className?: string;
-};
-
-export function ListingCard({ listing, showCategory = false, className = '' }: ListingCardProps) {
+}) {
   return (
-    <Card className={className}>
-      <div className="flex justify-between items-start mb-4">
-        {showCategory && listing.category ? (
-          <span className="px-3 py-1 bg-white/10 text-white/70 rounded-full text-xs">
-            {listing.category}
-          </span>
-        ) : (
-          <CardTitle>{listing.title}</CardTitle>
+    <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-colors">
+      <div className="p-6">
+        {showCategory && (
+          <div className="mb-2">
+            <span className="inline-block bg-blue-900/20 text-blue-400 text-xs px-2 py-1 rounded">
+              {listing.category}
+            </span>
+          </div>
         )}
-        <span className="text-white bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-1 rounded-lg text-sm font-medium">
-          {listing.price}
-        </span>
+        
+        <h3 className="text-xl font-semibold mb-2">
+          <Link href={`/dashboard/product/${listing.id}`} className="hover:text-blue-500 transition-colors">
+            {listing.title}
+          </Link>
+        </h3>
+        
+        <p className="text-white/70 mb-4 line-clamp-2">
+          {listing.description}
+        </p>
+        
+        <div className="flex justify-between items-center mb-4">
+          <div className="text-lg font-semibold">{listing.price}</div>
+          <div className="text-white/50 text-sm">{listing.createdAt}</div>
+        </div>
+        
+        <div className="text-xs text-white/50 mb-4">
+          Seller: {listing.seller}
+        </div>
+        
+        {listing.ipfsHash && (
+          <div className="mb-4 flex items-center text-xs text-blue-400">
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <a 
+              href={ipfsToHttp(listing.ipfsHash)} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              View Document
+            </a>
+          </div>
+        )}
+        
+        <Button 
+          href={`/dashboard/product/${listing.id}`}
+          className="w-full"
+          variant="secondary"
+        >
+          View Details
+        </Button>
       </div>
-      
-      {showCategory && <CardTitle className="mb-2">{listing.title}</CardTitle>}
-      <CardDescription className="mb-6">{listing.description}</CardDescription>
-      
-      <div className="flex justify-between items-center text-sm text-white/50 mb-5">
-        <span>Seller: {listing.seller}</span>
-        <span>{listing.createdAt}</span>
-      </div>
-      
-      <CardFooter>
-        <Link href={`/dashboard/marketplace/${listing.id}`} className="flex-1">
-          <button className="w-full bg-white/10 hover:bg-white/15 border border-white/10 rounded-xl py-2 transition-colors">
-            View Details
-          </button>
-        </Link>
-        <Button className="flex-1">Purchase</Button>
-      </CardFooter>
-    </Card>
+    </div>
   );
 } 

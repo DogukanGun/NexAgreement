@@ -1,18 +1,123 @@
 'use client'
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
+import { MetaMaskConnect } from './ui/MetaMaskConnect';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-  const isInApp = pathname.startsWith('/dashboard') || pathname.startsWith('/listings') || pathname.startsWith('/purchases');
+  
+  // Memoize this calculation to prevent unnecessary re-renders
+  const isInApp = useMemo(() => {
+    return pathname.startsWith('/dashboard') || 
+           pathname.startsWith('/listings') || 
+           pathname.startsWith('/purchases');
+  }, [pathname]);
+
+  // Memoize the menu button handler
+  const handleMobileMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // Memoize navigation links to prevent unnecessary re-renders
+  const renderDesktopNavLinks = useMemo(() => {
+    if (!isInApp) {
+      return (
+        <Link
+          href="/dashboard"
+          className="relative px-8 py-3 overflow-hidden rounded-xl"
+        >
+          <span className="relative z-10 text-white font-semibold">
+            Launch App
+          </span>
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-100 group-hover:opacity-80 transition-opacity" />
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-transparent animate-ripple" />
+          </div>
+        </Link>
+      );
+    }
+    
+    return (
+      <>
+        <Link
+          href="/dashboard"
+          className={`transition-colors ${pathname === '/dashboard' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
+        >
+          Dashboard
+        </Link>
+        <Link
+          href="/dashboard/marketplace"
+          className={`transition-colors ${pathname === '/dashboard/marketplace' || pathname.startsWith('/dashboard/marketplace/') ? 'text-white' : 'text-gray-300 hover:text-white'}`}
+        >
+          Marketplace
+        </Link>
+        <Link
+          href="/dashboard/listings"
+          className={`transition-colors ${pathname === '/dashboard/listings' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
+        >
+          Listings
+        </Link>
+        <Link
+          href="/dashboard/purchases"
+          className={`transition-colors ${pathname === '/dashboard/purchases' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
+        >
+          Purchases
+        </Link>
+      </>
+    );
+  }, [isInApp, pathname]);
+
+  // Memoize mobile navigation links
+  const renderMobileNavLinks = useMemo(() => {
+    if (!isInApp) {
+      return (
+        <Link
+          href="/dashboard"
+          className="block py-3 text-center text-white font-semibold bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:opacity-90 transition-opacity"
+        >
+          Launch App
+        </Link>
+      );
+    }
+    
+    return (
+      <>
+        <Link
+          href="/dashboard"
+          className={`block py-2 transition-colors ${pathname === '/dashboard' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
+        >
+          Dashboard
+        </Link>
+        <Link
+          href="/dashboard/marketplace"
+          className={`block py-2 transition-colors ${pathname === '/dashboard/marketplace' || pathname.startsWith('/dashboard/marketplace/') ? 'text-white' : 'text-gray-300 hover:text-white'}`}
+        >
+          Marketplace
+        </Link>
+        <Link
+          href="/dashboard/listings"
+          className={`block py-2 transition-colors ${pathname === '/dashboard/listings' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
+        >
+          Listings
+        </Link>
+        <Link
+          href="/dashboard/purchases"
+          className={`block py-2 transition-colors ${pathname === '/dashboard/purchases' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
+        >
+          Purchases
+        </Link>
+      </>
+    );
+  }, [isInApp, pathname]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10">
-      <div className="container mx-auto px-6">
+      <div className="container mx-auto px-6 max-w-7xl">
         <div className="flex items-center justify-between h-20">
+          {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-3 group">
               <div className="relative w-10 h-10 glow rounded-xl overflow-hidden">
@@ -29,55 +134,17 @@ export default function Navbar() {
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center space-x-6">
-            {!isInApp && (
-              <Link
-                href="/dashboard"
-                className="relative px-8 py-3 overflow-hidden rounded-xl"
-              >
-                <span className="relative z-10 text-white font-semibold">
-                  Launch App
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-100 group-hover:opacity-80 transition-opacity" />
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-transparent animate-ripple" />
-                </div>
-              </Link>
-            )}
-            {isInApp && (
-              <div className="flex items-center space-x-6">
-                <Link
-                  href="/dashboard"
-                  className={`transition-colors ${pathname === '/dashboard' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/dashboard/marketplace"
-                  className={`transition-colors ${pathname === '/dashboard/marketplace' || pathname.startsWith('/dashboard/marketplace/') ? 'text-white' : 'text-gray-300 hover:text-white'}`}
-                >
-                  Marketplace
-                </Link>
-                <Link
-                  href="/dashboard/listings"
-                  className={`transition-colors ${pathname === '/dashboard/listings' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
-                >
-                  Listings
-                </Link>
-                <Link
-                  href="/dashboard/purchases"
-                  className={`transition-colors ${pathname === '/dashboard/purchases' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
-                >
-                  Purchases
-                </Link>
-              </div>
-            )}
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex items-center space-x-8">
+            {renderDesktopNavLinks}
           </div>
 
+
+
           {/* Mobile menu button */}
-          <div className="md:hidden">
+          <div className="md:hidden ml-4">
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={handleMobileMenuToggle}
               className="p-2 rounded-lg text-gray-400 hover:text-white transition-colors focus:outline-none"
             >
               <svg
@@ -113,42 +180,7 @@ export default function Navbar() {
           } overflow-hidden`}
         >
           <div className="py-4 space-y-4">
-            {!isInApp && (
-              <Link
-                href="/dashboard"
-                className="block py-3 text-center text-white font-semibold bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:opacity-90 transition-opacity"
-              >
-                Launch App
-              </Link>
-            )}
-            {isInApp && (
-              <>
-                <Link
-                  href="/dashboard"
-                  className={`block py-2 transition-colors ${pathname === '/dashboard' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/dashboard/marketplace"
-                  className={`block py-2 transition-colors ${pathname === '/dashboard/marketplace' || pathname.startsWith('/dashboard/marketplace/') ? 'text-white' : 'text-gray-300 hover:text-white'}`}
-                >
-                  Marketplace
-                </Link>
-                <Link
-                  href="/dashboard/listings"
-                  className={`block py-2 transition-colors ${pathname === '/dashboard/listings' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
-                >
-                  Listings
-                </Link>
-                <Link
-                  href="/dashboard/purchases"
-                  className={`block py-2 transition-colors ${pathname === '/dashboard/purchases' ? 'text-white' : 'text-gray-300 hover:text-white'}`}
-                >
-                  Purchases
-                </Link>
-              </>
-            )}
+            {renderMobileNavLinks}
           </div>
         </div>
       </div>
