@@ -18,7 +18,7 @@ export const NETWORK_CONFIG = {
 
 // Contract addresses from deployment
 export const CONTRACT_ADDRESSES = {
-  productFactory: "0xd24Aa294AC0Cc64670B1350d38D2356D62D9D615", // Deployed on Flare Coston2
+  productFactory: process.env.NEXT_PUBLIC_PRODUCT_FACTORY_ADDRESS || "0x047910F74f46557c0FF481C9C06E064CB5A490a0", // Deployed on Flare Coston2
   // ProductNFT address is automatically created during ProductFactory deployment
   // It can be accessed via productFactory.productNFT() if needed
 };

@@ -4,14 +4,18 @@ import { useState, useRef, ChangeEvent } from 'react';
 import { uploadToIPFS } from '@/app/utils/ipfs';
 
 interface FileUploaderProps {
+  onFileSelected?: (file: File) => void;
   onFileUploaded: (url: string) => void;
-  acceptedFileTypes?: string; // Allows customizing accepted file types
-  maxSizeMB?: number; // Allows setting max file size in MB
+  acceptedFileTypes?: string;
+  name: string;
+  maxSizeMB?: number;
 }
 
 export function FileUploader({ 
+  onFileSelected,
   onFileUploaded, 
-  acceptedFileTypes = 'application/pdf', 
+  name,
+  acceptedFileTypes = 'image/*', 
   maxSizeMB = 10 
 }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -71,6 +75,14 @@ export function FileUploader({
     }
 
     setFileName(file.name);
+    
+    // If onFileSelected is provided, call it with the file
+    if (onFileSelected) {
+      onFileSelected(file);
+      return;
+    }
+
+    // Otherwise proceed with immediate upload
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -88,7 +100,7 @@ export function FileUploader({
 
       // Upload to IPFS
       const ipfsUrl = await uploadToIPFS(file);
-      
+      console.log(ipfsUrl);
       // Finish progress bar
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -113,7 +125,7 @@ export function FileUploader({
   return (
     <div>
       <label className="block text-sm font-medium text-white/80 mb-2">
-        Agreement Document (PDF)
+        {name}
       </label>
       <div 
         className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
@@ -146,7 +158,7 @@ export function FileUploader({
             </div>
             <p className="mt-2 text-sm text-white/70">Uploading to IPFS... {uploadProgress}%</p>
             <p className="mt-1 text-xs text-white/50">
-              Your file is being securely stored on the decentralized IPFS network
+              Your image is being securely stored on the decentralized IPFS network
             </p>
           </div>
         ) : fileName ? (
@@ -180,14 +192,14 @@ export function FileUploader({
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth="2" 
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
             <p className="mt-2 text-sm text-white/70">
-              Drag and drop your PDF agreement, or click to select
+              Drag and drop your image, or click to select
             </p>
             <p className="mt-1 text-xs text-white/50">
-              PDF format only, max {maxSizeMB}MB
+              Images only, max {maxSizeMB}MB
             </p>
           </>
         )}
@@ -201,7 +213,7 @@ export function FileUploader({
       
       {fileName && !isUploading && !error && (
         <div className="mt-2 text-sm text-green-400">
-          File uploaded to IPFS successfully
+          Image uploaded to IPFS successfully
         </div>
       )}
     </div>

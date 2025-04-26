@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { PageHeader } from '@/app/components/ui/PageHeader';
+import { Button } from '@/app/components/ui/Button';
+import { Card } from '@/app/components/ui/Card';
 import { useBlockchain } from '@/app/providers/BlockchainProvider';
 import { ethers } from 'ethers';
+import { toast } from 'react-hot-toast';
+import Image from 'next/image';
 import { ipfsToHttp } from '@/app/utils/ipfs';
-import { getExplorerLink, NETWORK_CONFIG } from '@/app/utils/config';
-import { Button } from '@/app/components/ui/Button';
-import { PageHeader } from '@/app/components/ui/PageHeader';
-import { Card } from '@/app/components/ui/Card';
-
+import Link from 'next/link';
+import prodcutAbi from "@/public/product.abi.json"
 // Category mapping (numeric ID to string name)
 const CATEGORY_NAMES: Record<number, string> = {
   0: 'Commercial',
@@ -20,216 +21,328 @@ const CATEGORY_NAMES: Record<number, string> = {
   4: 'Real Estate'
 };
 
-interface ProductParams {
-  id: string;
-}
-
-type ProductDetails = {
+interface ProductDetails {
   id: number;
   title: string;
   description: string;
-  category: string;
   price: string;
-  priceInWei: bigint;
   seller: string;
-  sellerShort: string;
-  contractAddress: string;
-  productAddress: string;
-  tokenId: number;
-  ipfsHash: string;
+  category: string;
+  imageUrl: string;
+  agreementUrl: string;
+  hasAgreement: boolean;
   isSold: boolean;
-};
+}
 
-export default function ProductDetailsPage({ params }: { params: ProductParams }) {
-  const productId = parseInt(params.id);
+export default function ProductDetailsPage() {
+  const params = useParams();
+  const productId = parseInt(params.id as string);
   const [product, setProduct] = useState<ProductDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
-  const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  
-  const { productFactoryContract, isConnected, address } = useBlockchain();
+  const { productFactoryContract, isLoading: isContractLoading } = useBlockchain();
+  const [httpImageUrl, setHttpImageUrl] = useState<string>('');
+  const [httpAgreementUrl, setHttpAgreementUrl] = useState<string>('');
+  const [isGeneratingAgreement, setIsGeneratingAgreement] = useState(false);
+  const [agreementGenerationError, setAgreementGenerationError] = useState<string | null>(null);
+  const [signatureStatus, setSignatureStatus] = useState<{ 
+    senderVerified: boolean; 
+    receiverVerified: boolean; 
+  } | null>(null);
+  const [isCurrentUserSeller, setIsCurrentUserSeller] = useState(false);
+  const [purchaseComplete, setPurchaseComplete] = useState(false);
+  const [purchaseTxHash, setPurchaseTxHash] = useState('');
+  const [buyerSignature, setBuyerSignature] = useState('');
 
   useEffect(() => {
-    async function fetchProduct() {
-      if (!productFactoryContract) {
-        setIsLoading(false);
-        setError("Contract not initialized. Please connect your wallet.");
-        return;
-      }
-      
+    async function fetchProductDetails() {
+      if (!productFactoryContract) return;
+
       try {
         setIsLoading(true);
         setError(null);
+
+        // Get product address from factory
+        const productAddress = await productFactoryContract.allProducts(productId);
         
-        // Get product address from allProducts
-        let productAddress;
-        try {
-          productAddress = await productFactoryContract.allProducts(productId);
-          console.log(`Product ${productId} address:`, productAddress);
-          
-          if (!productAddress || productAddress === "0x0000000000000000000000000000000000000000") {
-            setError('Product not found or has been removed');
-            return;
-          }
-        } catch (err) {
-          console.error('Error fetching product address:', err);
-          setError('Failed to fetch product address');
-          return;
-        }
-        
-        // Get the NFT contract address
-        let nftContractAddress;
-        try {
-          nftContractAddress = await productFactoryContract.productNFT();
-        } catch (err) {
-          console.error('Error fetching NFT contract address:', err);
-          nftContractAddress = "0x0000000000000000000000000000000000000000";
-        }
-        
-        // Create a minimal Product contract interface to access fields directly
+        // Create a minimal Product contract interface
         const ProductABI = [
           "function name() view returns (string)",
-          "function category() view returns (string)",
           "function description() view returns (string)",
-          "function ipfsId() view returns (string)",
           "function price() view returns (uint256)",
           "function seller() view returns (address)",
-          "function tokenId() view returns (uint256)",
+          "function category() view returns (string)",
+          "function imageUrl() view returns (string)",
+          "function agreementUrl() view returns (string)",
+          "function hasAgreement() view returns (bool)",
           "function isSold() view returns (bool)"
         ];
-        
-        // Try to get details directly from product contract
-        let title = `Product #${productId}`;
-        let description = `This is a product on the blockchain at address ${productAddress}`;
-        let categoryName = 'Other';
-        let ipfsHash = '';
-        let price = 'TBD C2FLR';
-        let priceInWei = BigInt(0);
-        let sellerAddress = address || "0x0000000000000000000000000000000000000000";
-        let productTokenId = productId;
-        let soldStatus = false;
-        
-        try {
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          const signer = await provider.getSigner();
-          const productContract = new ethers.Contract(productAddress, ProductABI, signer);
-          
-          // Get all product details at once
-          const [
-            productName,
-            productCategory,
-            productDescription,
-            productIpfsId,
-            productPrice,
-            productSeller,
-            tokenIdFromContract,
-            productIsSold
-          ] = await Promise.all([
-            productContract.name().catch(() => ""),
-            productContract.category().catch(() => "Other"),
-            productContract.description().catch(() => ""),
-            productContract.ipfsId().catch(() => ""),
-            productContract.price().catch(() => "0"),
-            productContract.seller().catch(() => "0x0000000000000000000000000000000000000000"),
-            productContract.tokenId().catch(() => productId),
-            productContract.isSold().catch(() => false)
-          ]);
-          
-          console.log('Product details from contract:', {
-            name: productName,
-            category: productCategory,
-            description: productDescription,
-            ipfsId: productIpfsId,
-            price: productPrice.toString(),
-            seller: productSeller,
-            tokenId: tokenIdFromContract.toString(),
-            isSold: productIsSold
-          });
-          
-          title = productName || title;
-          categoryName = productCategory || categoryName;
-          description = productDescription || description;
-          ipfsHash = productIpfsId || ipfsHash;
-          priceInWei = BigInt(productPrice.toString());
-          price = `${ethers.formatEther(priceInWei)} C2FLR`;
-          sellerAddress = productSeller || sellerAddress;
-          productTokenId = Number(tokenIdFromContract) || productTokenId;
-          soldStatus = productIsSold;
-          
-        } catch (contractErr) {
-          console.error('Error reading from product contract:', contractErr);
-          
-          // Fallback to getProductDetails from factory if available
-          try {
-            const details = await productFactoryContract.getProductDetails(productId);
-            if (details) {
-              console.log('Product details from factory:', details);
-              
-              ipfsHash = details.ipfsId || details.ipfsHash || details[0] || '';
-              categoryName = details.category || details[1] || 'Other';
-              title = details.name || details.title || details[2] || `Product #${productId}`;
-              description = details.description || details[3] || description;
-              
-              if (details.price || details[4]) {
-                const rawPrice = details.price || details[4] || 0;
-                priceInWei = BigInt(rawPrice.toString());
-                price = `${ethers.formatEther(priceInWei)} C2FLR`;
-              }
-            }
-          } catch (factoryErr) {
-            console.log('Could not get details from factory:', factoryErr);
-            // Continue with basic info
-          }
-        }
-        
-        // Format seller address for display
-        const sellerShort = sellerAddress ? `${sellerAddress.slice(0, 6)}...${sellerAddress.slice(-4)}` : 'Unknown';
-        
-        // Set product with all available information
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const productContract = new ethers.Contract(productAddress, ProductABI, signer);
+
+        // Fetch all product details
+        const [
+          name,
+          description,
+          price,
+          seller,
+          category,
+          imageUrl,
+          agreementUrl,
+          hasAgreement,
+          isSold
+        ] = await Promise.all([
+          productContract.name(),
+          productContract.description(),
+          productContract.price(),
+          productContract.seller(),
+          productContract.category(),
+          productContract.imageUrl(),
+          productContract.agreementUrl(),
+          productContract.hasAgreement(),
+          productContract.isSold()
+        ]);
+
+        // Convert IPFS URLs to HTTP URLs
+        const [httpImage, httpAgreement] = await Promise.all([
+          ipfsToHttp(imageUrl),
+          hasAgreement ? ipfsToHttp(agreementUrl) : Promise.resolve('')
+        ]);
+
+        setHttpImageUrl(httpImage);
+        setHttpAgreementUrl(httpAgreement);
+
         setProduct({
           id: productId,
-          title: title,
-          description: description,
-          category: categoryName,
-          price: price,
-          priceInWei: priceInWei,
-          seller: sellerAddress,
-          sellerShort: sellerShort,
-          contractAddress: nftContractAddress,
-          productAddress: productAddress,
-          tokenId: productTokenId,
-          ipfsHash: ipfsHash,
-          isSold: soldStatus
+          title: name,
+          description,
+          price: ethers.formatEther(price),
+          seller,
+          category,
+          imageUrl,
+          agreementUrl,
+          hasAgreement,
+          isSold
         });
+
+        // Check if current user is the seller
+        const currentAddress = await signer.getAddress();
+        setIsCurrentUserSeller(currentAddress.toLowerCase() === seller.toLowerCase());
       } catch (err) {
-        console.error('Error fetching product:', err);
+        console.error('Error fetching product details:', err);
         setError('Failed to load product details');
       } finally {
         setIsLoading(false);
       }
     }
-    
-    fetchProduct();
-  }, [productFactoryContract, productId, address]);
+
+    fetchProductDetails();
+  }, [productId, productFactoryContract]);
 
   const handlePurchase = async () => {
-    if (!productFactoryContract || !product || !isConnected) {
-      setPurchaseError('Please connect your wallet first');
-      return;
+    if (!productFactoryContract || !product) return;
+
+    try {
+      setIsPurchasing(true);
+      setError(null);
+      setAgreementGenerationError(null);
+
+      // Get product address
+      const productAddress = await productFactoryContract.allProducts(productId);
+      
+      // Create product contract instance
+      const ProductABI = [
+        "function purchase(bytes memory) payable",
+        "function price() view returns (uint256)",
+        "function seller() view returns (address)",
+        "function hasAgreement() view returns (bool)",
+        "function updateAgreementAfterPurchase(string memory) external"
+      ];
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const productContract = new ethers.Contract(productAddress, ProductABI, signer);
+
+      // Get current price and seller
+      const [price, seller] = await Promise.all([
+        productContract.price(),
+        productContract.seller()
+      ]);
+
+      const buyerAddress = await signer.getAddress();
+
+      // Create message for buyer to sign
+      const buyerMessage = `I agree to purchase "${product.title}" for ${ethers.formatEther(price)} C2FLR`;
+      console.log("Buyer message to sign:", buyerMessage);
+      
+      // Get signature from buyer
+      const buyerSignature = await signer.signMessage(buyerMessage);
+      console.log("Buyer signature:", buyerSignature);
+      
+      // Store signature for later use in document generation
+      setBuyerSignature(buyerSignature);
+
+      try {
+        console.log("Trying to purchase with params:", {
+          signature: buyerSignature,
+          value: price.toString(),
+          from: buyerAddress,
+          to: productAddress
+        });
+        
+        // Send purchase transaction with signature
+        const tx = await productContract.purchase(buyerSignature, { 
+          value: price,
+          gasLimit: 300000 // Set explicit gas limit to avoid estimation issues
+        });
+        
+        console.log("Purchase transaction sent:", tx.hash);
+        setPurchaseTxHash(tx.hash);
+        
+        const receipt = await tx.wait();
+        console.log("Purchase receipt:", receipt);
+        
+        // Call the process-transaction API with the transaction hash
+        try {
+          toast.loading('Generating agreement document with AI...');
+          const agentResponse = await fetch('/api/process-transaction', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ txHash: tx.hash }),
+          });
+          
+          if (!agentResponse.ok) {
+            throw new Error('Failed to process transaction with AI agent');
+          }
+          
+          const { ipfsUrl } = await agentResponse.json();
+          
+          // Explicitly update UI state
+          setPurchaseComplete(true);
+          
+          if (ipfsUrl) {
+            // Convert IPFS URL to HTTP URL
+            const httpUrl = await ipfsToHttp(ipfsUrl);
+            
+            // Update all relevant state
+            setProduct(prev => prev ? { 
+              ...prev, 
+              hasAgreement: true, 
+              agreementUrl: ipfsUrl,
+              isSold: true
+            } : null);
+            
+            setHttpAgreementUrl(httpUrl);
+            setSignatureStatus({
+              senderVerified: true,
+              receiverVerified: true
+            });
+            
+            // Hide the manual generation button since we succeeded
+            setPurchaseComplete(false);
+          }
+          
+          toast.dismiss();
+          toast.success('Agreement document generated automatically!');
+        } catch (agentError) {
+          console.error('Error calling AI agent:', agentError);
+          // We'll still set purchaseComplete to show manual button as fallback
+          setPurchaseComplete(true);
+          toast.error('Auto-generation failed. Please use manual generation.');
+        }
+      } catch (purchaseError: any) {
+        console.error('Purchase transaction failed:', purchaseError);
+        
+        // Try to extract more specific error information
+        const errorMessage = purchaseError.message || '';
+        if (errorMessage.includes('Agreement not uploaded')) {
+          setError('The product agreement has not been uploaded by the seller yet.');
+        } else if (errorMessage.includes('Invalid buyer signature')) {
+          setError('Your signature is invalid. Please try again.');
+        } else if (errorMessage.includes('user rejected')) {
+          setError('Transaction was rejected in your wallet.');
+        } else {
+          setError(`Transaction failed: ${errorMessage.substring(0, 100)}${errorMessage.length > 100 ? '...' : ''}`);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error in purchase process:', err);
+      setError(err.message || 'Failed to complete purchase process');
+    } finally {
+      setIsPurchasing(false);
     }
-    
-    setPurchaseError('Purchase functionality is not available yet');
-    
-    // Note: The original contract doesn't have a purchaseProduct function
-    // We'd need to implement this based on your contract's actual purchase mechanism
   };
   
+  const handleGenerateAgreement = async () => {
+    if (!productFactoryContract || !product) return;
+    
+    try {
+      setIsGeneratingAgreement(true);
+      setAgreementGenerationError(null);
+      
+      // Get product address and create contract instance
+      const productAddress = await productFactoryContract.allProducts(productId);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const productContract = new ethers.Contract(productAddress, prodcutAbi.abi, signer);
+      
+      const response = await fetch('/api/agreement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productDetails: {
+            title: product.title,
+            price: product.price,
+            description: product.description,
+            category: product.category
+          },
+          senderSignature: "",
+          receiverSignature: buyerSignature,
+          senderAddress: product.seller,
+          receiverAddress: await signer.getAddress(),
+          transactionHash: purchaseTxHash
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.agreementUrl) {
+        throw new Error('Failed to generate agreement');
+      }
+
+      // Update contract
+      const updateTx = await productContract.updateAgreementAfterPurchase(data.agreementUrl);
+      await updateTx.wait();
+
+      // Update UI state
+      setProduct(prev => prev ? { 
+        ...prev, 
+        hasAgreement: true, 
+        agreementUrl: data.agreementUrl 
+      } : null);
+      
+      setHttpAgreementUrl(await ipfsToHttp(data.agreementUrl));
+      setSignatureStatus(data.signatureStatus);
+      setPurchaseComplete(false);
+      
+      toast.success('Agreement generated successfully!');
+    } catch (err) {
+      console.error('Error generating agreement:', err);
+      setAgreementGenerationError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsGeneratingAgreement(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
+        <div className="text-center">
           <div className="inline-block w-8 h-8 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin mb-4"></div>
           <p className="text-white/70">Loading product details...</p>
         </div>
@@ -237,44 +350,16 @@ export default function ProductDetailsPage({ params }: { params: ProductParams }
     );
   }
 
-  if (error) {
+  if (error || !product) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <PageHeader 
-          title="Error Loading Product" 
-          description="There was a problem loading the product details"
-        />
-        <Card className="p-6 text-center">
-          <div className="text-red-400 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <p className="mb-6">{error}</p>
-          <Button href="/dashboard/marketplace">
-            Return to Marketplace
-          </Button>
-        </Card>
+        <div className="bg-red-900/20 border border-red-500/30 text-red-400 rounded-lg p-4 text-center">
+          {error || 'Product not found'}
+        </div>
       </div>
     );
   }
 
-  if (!product) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <PageHeader 
-          title="Product Not Found" 
-          description="The product you're looking for doesn't exist or has been removed"
-        />
-        <Card className="p-6 text-center">
-          <Button href="/dashboard/marketplace">
-            Browse Marketplace
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-  
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -284,175 +369,156 @@ export default function ProductDetailsPage({ params }: { params: ProductParams }
       </div>
       
       <PageHeader 
-        title={product.title} 
-        description="Product Details"
+        title={product.title}
+        description={product.category}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="p-6">
-          <div className="aspect-square rounded-lg overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Product Image */}
+        <Card variant="default">
+          <div className="relative aspect-square w-full overflow-hidden rounded-lg">
             <Image
-              src="/file.svg"
+              src={httpImageUrl}
               alt={product.title}
-              width={200}
-              height={200}
-              className="object-contain"
+              fill
+              className="object-cover"
+              unoptimized
             />
           </div>
-          
-          {product.ipfsHash && (
-            <div className="p-4 bg-blue-900/20 border border-blue-500/30 text-blue-400 rounded-lg mb-4">
-              <h3 className="font-semibold mb-2">Agreement Document</h3>
-              <p className="text-sm mb-2">This product is linked to a document on IPFS</p>
-              <div>
-                <a 
-                  href={ipfsToHttp(product.ipfsHash)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-500 hover:underline flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  View Document on IPFS
-                </a>
-              </div>
-            </div>
-          )}
-          
-          <div className="p-4 bg-blue-900/20 border border-blue-500/30 text-blue-400 rounded-lg">
-            <h3 className="font-semibold mb-2">Product Contract Address</h3>
-            <p className="font-mono text-sm break-all">{product.productAddress}</p>
-            <div className="mt-2">
-              <a 
-                href={getExplorerLink(product.productAddress)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-500 hover:underline"
-              >
-                View on Block Explorer
-              </a>
-            </div>
-          </div>
         </Card>
-        
-        <Card className="p-6">
+
+        {/* Product Details */}
+        <Card variant="default">
           <div className="space-y-6">
             <div>
-              <span className="inline-block px-2 py-1 bg-blue-900/20 text-blue-400 text-xs rounded mb-2">
-                {product.category}
-              </span>
-              <h2 className="text-2xl font-bold mb-2">{product.title}</h2>
-              <p className="text-white/70">
-                Created by{" "}
-                <a 
-                  href={getExplorerLink(product.seller)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
-                >
-                  {product.sellerShort}
-                </a>
-              </p>
+              <h2 className="text-2xl font-bold text-white mb-2">{product.title}</h2>
+              <p className="text-white/70">{product.description}</p>
             </div>
-            
-            <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-xl font-bold">{product.price}</span>
-                {product.isSold && (
-                  <span className="bg-red-900/20 text-red-400 px-2 py-1 text-xs rounded-full">
-                    Sold
-                  </span>
-                )}
+
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-white/70">Price:</span>
+                <span className="text-white font-bold">{product.price} C2FLR</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/70">Category:</span>
+                <span className="text-white">{product.category}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/70">Seller:</span>
+                <span className="text-white font-mono">
+                  {product.seller.slice(0, 6)}...{product.seller.slice(-4)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/70">Status:</span>
+                <span className={`font-bold ${product.isSold ? 'text-red-400' : 'text-green-400'}`}>
+                  {product.isSold ? 'Sold' : 'Available'}
+                </span>
               </div>
             </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Description</h3>
-              <p className="text-white/70">
-                {product.description}
-              </p>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Smart Contract Details</h3>
-              <div className="bg-blue-900/20 p-4 rounded-lg space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-white/70">NFT Contract</span>
-                  <a 
-                    href={getExplorerLink(product.contractAddress)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-blue-500 hover:underline"
-                  >
-                    {`${product.contractAddress.slice(0, 6)}...${product.contractAddress.slice(-4)}`}
-                  </a>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/70">Token ID</span>
-                  <span className="font-mono">#{product.tokenId}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/70">Blockchain</span>
-                  <span>{NETWORK_CONFIG.chainName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/70">Status</span>
-                  <span className={product.isSold ? "text-red-400" : "text-green-400"}>
-                    {product.isSold ? "Sold" : "Available"}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            {isConnected && !product.isSold && (
-              <div className="pt-4">
-                {purchaseSuccess ? (
-                  <div className="p-4 bg-green-900/20 border border-green-500/30 text-center rounded-lg">
-                    <svg className="w-8 h-8 text-green-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+
+            {product.hasAgreement && httpAgreementUrl && (
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-white mb-4">Agreement Document</h3>
+                <Card className="p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <h3 className="text-lg font-semibold text-green-400 mb-1">Purchase Successful!</h3>
-                    <p className="text-green-400 mb-4">The agreement has been transferred to your wallet.</p>
-                    <Button href="/dashboard/purchases" variant="secondary">
-                      View My Purchases
-                    </Button>
+                    <span>Agreement has been generated and stored on IPFS</span>
                   </div>
-                ) : (
-                  <>
-                    <Button
-                      className="w-full mb-4" 
-                      onClick={handlePurchase}
-                      disabled={isPurchasing || !isConnected}
-                      isLoading={isPurchasing}
-                    >
-                      {!isConnected 
-                        ? 'Connect Wallet to Purchase' 
-                        : isPurchasing 
-                          ? 'Processing...' 
-                          : 'Purchase Now'
-                      }
-                    </Button>
-                    {purchaseError && (
-                      <div className="p-3 bg-red-900/20 border border-red-500/30 text-red-400 rounded-lg mb-4">
-                        {purchaseError}
+                  
+                  {signatureStatus && (
+                    <div className="mb-4 p-4 bg-gray-800 rounded-lg">
+                      <h4 className="font-semibold mb-2">Signature Verification</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={signatureStatus.senderVerified ? "text-green-500" : "text-yellow-500"}>
+                            {signatureStatus.senderVerified ? "✓" : "⚠️"}
+                          </span>
+                          <span>Seller Signature: {signatureStatus.senderVerified ? "Verified" : "Not Verified"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={signatureStatus.receiverVerified ? "text-green-500" : "text-yellow-500"}>
+                            {signatureStatus.receiverVerified ? "✓" : "⚠️"}
+                          </span>
+                          <span>Buyer Signature: {signatureStatus.receiverVerified ? "Verified" : "Not Verified"}</span>
+                        </div>
                       </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-4">
+                    {/* View button */}
+                    <a 
+                      href={httpAgreementUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="inline-flex items-center gap-2 text-blue-400 hover:underline"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      View Agreement
+                    </a>
+
+                    {/* Download button */}
+                    <a 
+                      href={httpAgreementUrl}
+                      download={`agreement_${product.title.replace(/\s+/g, '_')}.pdf`}
+                      className="inline-flex items-center gap-2 text-green-400 hover:underline"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download Agreement
+                    </a>
+                  </div>
+                </Card>
               </div>
             )}
-            
-            {product.isSold && (
-              <div className="p-4 bg-red-900/20 border border-red-500/30 text-center rounded-lg">
-                <svg className="w-8 h-8 text-red-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 className="text-lg font-semibold text-red-400 mb-1">Product Already Sold</h3>
-                <p className="text-red-400 mb-4">This product has already been purchased.</p>
-                <Button href="/dashboard/marketplace" variant="secondary">
-                  Browse Marketplace
+
+            {!product.isSold && !isCurrentUserSeller && (
+              <div className="space-y-4">
+                <div className="bg-blue-900/20 border border-blue-500/30 text-blue-400 rounded-lg p-4 mb-4">
+                  <p className="font-semibold">Smart Agreement Purchase</p>
+                  <p className="text-sm mt-1">
+                    First purchase the product, then you'll be able to generate the legally binding agreement document.
+                  </p>
+                </div>
+                <Button
+                  onClick={handlePurchase}
+                  disabled={isPurchasing || isContractLoading}
+                  className="w-full"
+                >
+                  {isPurchasing ? 'Processing Purchase...' : isContractLoading ? 'Loading...' : 'Purchase Product'}
                 </Button>
+              </div>
+            )}
+
+            {purchaseComplete && !product.hasAgreement && (
+              <div className="space-y-4 mt-4">
+                <div className="bg-red-900/20 border border-red-500/30 text-red-400 rounded-lg p-4">
+                  <p className="font-semibold">Automatic Agreement Generation Failed</p>
+                  <p className="text-sm mt-1">The system couldn't automatically generate your agreement.</p>
+                  <Button
+                    onClick={handleGenerateAgreement}
+                    disabled={isGeneratingAgreement}
+                    className="mt-2"
+                  >
+                    Generate Agreement Manually
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isCurrentUserSeller && !product.isSold && (
+              <div className="bg-blue-900/20 border border-blue-500/30 text-blue-400 rounded-lg p-4 mb-4">
+                <p className="font-semibold">You are the seller</p>
+                <p className="text-sm mt-1">
+                  When someone purchases this product, an AI-generated agreement will be automatically created.
+                </p>
               </div>
             )}
           </div>

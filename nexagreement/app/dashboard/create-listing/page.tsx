@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { PageHeader } from '@/app/components/ui/PageHeader';
 import { Button } from '@/app/components/ui/Button';
 import { Input, Textarea, Select } from '@/app/components/ui/Input';
 import { Card } from '@/app/components/ui/Card';
 import { FileUploader } from './components/FileUploader';
-import { ipfsToHttp } from '@/app/utils/ipfs';
+import { ipfsToHttp, uploadToIPFS } from '@/app/utils/ipfs';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { metaMask } from 'wagmi/connectors';
 import { useBlockchain } from '@/app/providers/BlockchainProvider';
 import { switchToFlareNetwork, NETWORK_CONFIG, addFlareNetworkToMetamask } from '@/app/utils/config';
 import { ethers } from 'ethers';
+import { toast } from 'react-hot-toast';
+import Image from 'next/image';
 
 export default function CreateListing() {
   const [formData, setFormData] = useState({
@@ -20,11 +21,14 @@ export default function CreateListing() {
     price: '',
     description: ''
   });
-  const [fileUrl, setFileUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [httpImageUrl, setHttpImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionHash, setTransactionHash] = useState('');
   const [error, setError] = useState('');
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   // Wagmi hooks for wallet connection
   const { address, isConnected, chainId } = useAccount();
@@ -67,17 +71,119 @@ export default function CreateListing() {
     }
   };
 
+  const handleFileSelected = async (file: File) => {
+    // Check file size (max 1MB)
+    const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB in bytes
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File size exceeds 1MB limit. Please choose a smaller file.`);
+      setSelectedFile(null);
+      setImagePreview('');
+      return;
+    }
+
+    setSelectedFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setImageUrl('');
+    setError(''); // Clear any previous errors
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!selectedFile) {
+      setError('Please select a file first');
+      return;
+    }
+
+    try {
+      setError('');
+      setIsSubmitting(true);
+      
+      // Compress image before upload if it's an image
+      let fileToUpload = selectedFile;
+      if (selectedFile.type.startsWith('image/')) {
+        fileToUpload = await compressImage(selectedFile);
+      }
+      
+      const url = await uploadToIPFS(fileToUpload);
+      console.log('Uploaded to IPFS:', url);
+      setImageUrl(url);
+      
+      const httpUrl = await ipfsToHttp(url);
+      console.log('HTTP URL:', httpUrl);
+      setHttpImageUrl(httpUrl);
+      
+      setImagePreview('');
+      setSelectedFile(null);
+      toast.success('File uploaded successfully!');
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      setError('Failed to upload file. Please try again with a smaller file.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Add image compression function
+  const compressImage = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = document.createElement('img');
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Calculate new dimensions while maintaining aspect ratio
+          let width = img.width;
+          let height = img.height;
+          const MAX_DIMENSION = 1000; // Max width or height
+          
+          if (width > height && width > MAX_DIMENSION) {
+            height = (height * MAX_DIMENSION) / width;
+            width = MAX_DIMENSION;
+          } else if (height > MAX_DIMENSION) {
+            width = (width * MAX_DIMENSION) / height;
+            height = MAX_DIMENSION;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob((blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                });
+                resolve(compressedFile);
+              } else {
+                reject(new Error('Failed to compress image'));
+              }
+            }, 'image/jpeg', 0.7); // 0.7 quality
+          } else {
+            reject(new Error('Failed to get canvas context'));
+          }
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+    });
+  };
+
   const handleFileUploaded = (url: string) => {
-    setFileUrl(url);
-    console.log('File uploaded to IPFS:', url);
+    setImageUrl(url);
+    console.log('Image uploaded to IPFS:', url);
     console.log('HTTP gateway URL:', ipfsToHttp(url));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!fileUrl) {
-      setError('Please upload an agreement document first');
+    if (!imageUrl) {
+      setError('Please upload an item image first');
       return;
     }
 
@@ -107,6 +213,14 @@ export default function CreateListing() {
 
       const priceInWei = ethers.parseEther(formData.price);
       
+      // Create message for seller to sign
+      const message = `I agree to list "${formData.title}" for sale at ${formData.price} C2FLR`;
+      
+      // Get signature from seller
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(message);
+      
       // Map string category to numeric category ID
       const categoryMap: Record<string, string> = {
         'commercial': "0",
@@ -116,17 +230,16 @@ export default function CreateListing() {
         'real-estate': "4"
       };
       
-      // Use the category ID or default to 0 if not found
-      
       // Create listing on blockchain using the product factory contract
       const tx = await productFactoryContract.createProduct(
         formData.title,
         formData.description,
         priceInWei,
-        1,
-        "",
+        1, // royaltyPercentage (1%)
+        "", // tokenURI (empty for now)
         formData.category,
-        fileUrl
+        imageUrl, // IPFS URL of the image
+        signature // Seller's signature
       );
       
       console.log('Transaction sent:', tx.hash);
@@ -143,7 +256,8 @@ export default function CreateListing() {
         price: '',
         description: ''
       });
-      setFileUrl('');
+      setImageUrl('');
+      setHttpImageUrl('');
     } catch (err: any) {
       console.error('Error creating listing:', err);
       setError(err.message || 'Failed to create listing. Please try again.');
@@ -165,7 +279,7 @@ export default function CreateListing() {
     <div className="container mx-auto px-4 py-8">
       <PageHeader 
         title="Create New Listing" 
-        description="List your legal agreement on the blockchain marketplace"
+        description="List your item on the blockchain marketplace"
       />
 
       <Card variant="default" className="max-w-3xl mx-auto">
@@ -315,11 +429,11 @@ export default function CreateListing() {
                       {transactionHash.slice(0, 10)}...{transactionHash.slice(-6)}
                     </a>
                   </p>
-                  {fileUrl && (
+                  {imageUrl && (
                     <p className="text-sm mt-1">
-                      Agreement Document: 
+                      Item Image: 
                       <a 
-                        href={ipfsToHttp(fileUrl)} 
+                        href={""} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="font-mono ml-1 underline"
@@ -332,10 +446,10 @@ export default function CreateListing() {
               )}
 
               <Input
-                label="Agreement Title"
+                label="Item Title"
                 id="title"
                 name="title"
-                placeholder="e.g. Premium Commercial Agreement"
+                placeholder="e.g. Premium Digital Art"
                 required
                 value={formData.title}
                 onChange={handleChange}
@@ -368,26 +482,60 @@ export default function CreateListing() {
                 id="description"
                 name="description"
                 rows={4}
-                placeholder="Provide a detailed description of your agreement..."
+                placeholder="Provide a detailed description of your item..."
                 required
                 value={formData.description}
                 onChange={handleChange}
               />
 
               <FileUploader 
+                onFileSelected={handleFileSelected}
                 onFileUploaded={handleFileUploaded}
-                acceptedFileTypes="application/pdf"
-                maxSizeMB={10}
+                acceptedFileTypes="image/*"
+                maxSizeMB={1}
+                name="Item Image"
               />
 
-              {fileUrl && (
-                <div className="p-3 border border-blue-500/30 bg-blue-500/10 text-blue-400 rounded-lg flex items-center">
-                  <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <div>
-                    <p className="font-medium">Agreement document uploaded</p>
-                    <p className="text-xs">Your document has been securely stored on IPFS</p>
+              {imagePreview && !imageUrl && (
+                <div className="space-y-4">
+                  <div className="relative aspect-square w-full overflow-hidden rounded-lg">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setImagePreview('');
+                        setSelectedFile(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleConfirmUpload}>
+                      Confirm & Upload
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {imageUrl && httpImageUrl && (
+                <div className="space-y-4">
+                  <div className="relative aspect-square w-full overflow-hidden rounded-lg">
+                    <Image
+                      src={httpImageUrl}
+                      alt="Uploaded image"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="rounded-lg bg-muted p-4">
+                    <p className="text-sm text-muted-foreground">Image URL:</p>
+                    <p className="mt-1 break-all font-mono text-sm">{httpImageUrl}</p>
                   </div>
                 </div>
               )}
@@ -402,7 +550,7 @@ export default function CreateListing() {
                 </Button>
                 <Button 
                   type="submit"
-                  disabled={isSubmitting || !fileUrl || isContractLoading}
+                  disabled={isSubmitting || !imageUrl || isContractLoading}
                 >
                   {isSubmitting ? 'Creating Listing...' : isContractLoading ? 'Loading Contract...' : 'Create Listing'}
                 </Button>

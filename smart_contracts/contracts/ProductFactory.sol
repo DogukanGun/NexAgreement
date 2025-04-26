@@ -42,10 +42,11 @@ contract ProductFactory is Ownable {
      * @param price Product price in wei
      * @param royaltyPercentage Royalty percentage (in basis points, e.g. 500 = 5%)
      * @param tokenURI The metadata URI for the NFT
+     * @param category The category of the product
+     * @param imageUrl The URL of the product image
+     * @param sellerSignature The seller's signature for the listing
      * @return productAddress The address of the created product contract
      * @return tokenId The ID of the minted NFT
-     * @param category The category of the product
-     * @param ipfsId The IPFS ID of the product
      */
     function createProduct(
         string memory name,
@@ -54,7 +55,8 @@ contract ProductFactory is Ownable {
         uint256 royaltyPercentage,
         string memory tokenURI,
         string memory category,
-        string memory ipfsId
+        string memory imageUrl,
+        bytes memory sellerSignature
     ) external returns (address productAddress, uint256 tokenId) {
         // Create a temporary product contract
         Product tempProduct = new Product(
@@ -66,7 +68,8 @@ contract ProductFactory is Ownable {
             0, // Temporary tokenId, will be updated after minting
             address(productNFT),
             category,
-            ipfsId
+            imageUrl,
+            sellerSignature
         );
         
         // Mint the NFT
@@ -82,7 +85,8 @@ contract ProductFactory is Ownable {
             tokenId,
             address(productNFT),
             category,
-            ipfsId
+            imageUrl,
+            sellerSignature
         );
         
         // Add to factory records

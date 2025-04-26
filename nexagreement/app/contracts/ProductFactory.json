@@ -136,8 +136,13 @@
         },
         {
           "internalType": "string",
-          "name": "ipfsId",
+          "name": "imageUrl",
           "type": "string"
+        },
+        {
+          "internalType": "bytes",
+          "name": "sellerSignature",
+          "type": "bytes"
         }
       ],
       "name": "createProduct",

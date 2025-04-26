@@ -44,12 +44,44 @@
         },
         {
           "internalType": "string",
-          "name": "_ipfsId",
+          "name": "_imageUrl",
           "type": "string"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_sellerSignature",
+          "type": "bytes"
         }
       ],
       "stateMutability": "nonpayable",
       "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "ECDSAInvalidSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "length",
+          "type": "uint256"
+        }
+      ],
+      "name": "ECDSAInvalidSignatureLength",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ECDSAInvalidSignatureS",
+      "type": "error"
     },
     {
       "inputs": [
@@ -72,6 +104,19 @@
       ],
       "name": "OwnableUnauthorizedAccount",
       "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "newAgreementUrl",
+          "type": "string"
+        }
+      ],
+      "name": "AgreementUpdated",
+      "type": "event"
     },
     {
       "anonymous": false,
@@ -137,6 +182,51 @@
       "type": "event"
     },
     {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "signer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "isSeller",
+          "type": "bool"
+        }
+      ],
+      "name": "SignatureUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "agreementUrl",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "buyerSignature",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "category",
       "outputs": [
@@ -164,7 +254,20 @@
     },
     {
       "inputs": [],
-      "name": "ipfsId",
+      "name": "hasAgreement",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "imageUrl",
       "outputs": [
         {
           "internalType": "string",
@@ -241,7 +344,13 @@
       "type": "function"
     },
     {
-      "inputs": [],
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "_buyerSignature",
+          "type": "bytes"
+        }
+      ],
       "name": "purchase",
       "outputs": [],
       "stateMutability": "payable",
@@ -282,6 +391,19 @@
     },
     {
       "inputs": [],
+      "name": "sellerSignature",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "tokenId",
       "outputs": [
         {
@@ -310,6 +432,32 @@
       "inputs": [
         {
           "internalType": "string",
+          "name": "_agreementUrl",
+          "type": "string"
+        }
+      ],
+      "name": "updateAgreement",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_agreementUrl",
+          "type": "string"
+        }
+      ],
+      "name": "updateAgreementAfterPurchase",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
           "name": "_newDescription",
           "type": "string"
         }
@@ -330,6 +478,35 @@
       "name": "updatePrice",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "message",
+          "type": "string"
+        },
+        {
+          "internalType": "bytes",
+          "name": "signature",
+          "type": "bytes"
+        },
+        {
+          "internalType": "address",
+          "name": "signer",
+          "type": "address"
+        }
+      ],
+      "name": "verifySignature",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "pure",
       "type": "function"
     }
   ]

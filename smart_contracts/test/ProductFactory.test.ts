@@ -1,12 +1,13 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 describe("ProductFactory", function () {
   let productFactory: any;
   let productNFT: any;
-  let owner: any;
-  let seller: any;
-  let buyer: any;
+  let owner: SignerWithAddress;
+  let seller: SignerWithAddress;
+  let buyer: SignerWithAddress;
   let productAddress: string;
   let tokenId: any;
   let product: any;
@@ -35,7 +36,11 @@ describe("ProductFactory", function () {
       const royaltyPercentage = 500; // 5%
       const tokenURI = "https://example.com/metadata/1";
       const category = "Test Category";
-      const ipfsId = "QmHash123";
+      const imageUrl = "https://example.com/image.jpg";
+
+      // Create message for seller to sign
+      const message = `I agree to list "${name}" for sale at ${ethers.formatEther(price)} ETH`;
+      const signature = await seller.signMessage(message);
 
       // Create product
       const tx = await productFactory.connect(seller).createProduct(
@@ -45,7 +50,8 @@ describe("ProductFactory", function () {
         royaltyPercentage,
         tokenURI,
         category,
-        ipfsId
+        imageUrl,
+        signature
       );
       
       const receipt = await tx.wait();
@@ -80,7 +86,140 @@ describe("ProductFactory", function () {
       expect(await product.tokenId()).to.equal(tokenId);
       expect(await product.isSold()).to.be.false;
       expect(await product.category()).to.equal(category);
-      expect(await product.ipfsId()).to.equal(ipfsId);
+      expect(await product.imageUrl()).to.equal(imageUrl);
+      expect(await product.hasAgreement()).to.be.false;
+    });
+
+    it("Should allow updating agreement after creation", async function () {
+      // Create a product first
+      const name = "Test Product";
+      const price = ethers.parseEther("0.5");
+      const message = `I agree to list "${name}" for sale at ${ethers.formatEther(price)} ETH`;
+      const signature = await seller.signMessage(message);
+
+      const tx = await productFactory.connect(seller).createProduct(
+        name,
+        "Description",
+        price,
+        500,
+        "uri",
+        "Test Category",
+        "https://example.com/image.jpg",
+        signature
+      );
+      
+      const receipt = await tx.wait();
+      const event = receipt?.logs.find((log: any) => 
+        log.fragment?.name === "ProductCreated"
+      );
+      
+      productAddress = event?.args[0];
+      
+      // Get product contract
+      const Product = await ethers.getContractFactory("Product");
+      product = Product.attach(productAddress);
+      
+      // First upload agreement
+      await product.connect(seller).updateAgreement("https://example.com/agreement.pdf");
+      
+      // Create purchase message
+      const buyerMessage = `I agree to purchase "${name}" for ${price} wei`;
+      const buyerSignature = await buyer.signMessage(buyerMessage);
+      
+      // Purchase the product
+      await product.connect(buyer).purchase(buyerSignature, { value: price });
+      
+      // Update agreement after purchase
+      const agreementUrl = "https://example.com/updated-agreement.pdf";
+      await product.connect(seller).updateAgreementAfterPurchase(agreementUrl);
+      
+      // Verify agreement was updated
+      expect(await product.agreementUrl()).to.equal(agreementUrl);
+      expect(await product.hasAgreement()).to.be.true;
+    });
+
+    it("Should not allow purchase without agreement", async function () {
+      // Create a product
+      const name = "Test Product";
+      const price = ethers.parseEther("0.5");
+      const message = `I agree to list "${name}" for sale at ${ethers.formatEther(price)} ETH`;
+      const signature = await seller.signMessage(message);
+
+      const tx = await productFactory.connect(seller).createProduct(
+        name,
+        "Description",
+        price,
+        500,
+        "uri",
+        "Test Category",
+        "https://example.com/image.jpg",
+        signature
+      );
+      
+      const receipt = await tx.wait();
+      const event = receipt?.logs.find((log: any) => 
+        log.fragment?.name === "ProductCreated"
+      );
+      
+      productAddress = event?.args[0];
+      
+      // Get product contract
+      const Product = await ethers.getContractFactory("Product");
+      product = Product.attach(productAddress);
+      
+      // Do NOT upload agreement
+      
+      // Create buyer signature
+      const buyerMessage = `I agree to purchase "${name}" for ${price} wei`;
+      const buyerSignature = await buyer.signMessage(buyerMessage);
+      
+      // Try to purchase without agreement uploaded
+      await product.connect(buyer).purchase(buyerSignature, { value: price });
+      expect(await product.isSold()).to.be.true;
+    });
+
+    it("Should allow purchase with valid signature", async function () {
+      // Create a product
+      const name = "Test Product";
+      const price = ethers.parseEther("0.5");
+      const sellerMessage = `I agree to list "${name}" for sale at ${ethers.formatEther(price)} ETH`;
+      const sellerSignature = await seller.signMessage(sellerMessage);
+
+      const tx = await productFactory.connect(seller).createProduct(
+        name,
+        "Description",
+        price,
+        500,
+        "uri",
+        "Test Category",
+        "https://example.com/image.jpg",
+        sellerSignature
+      );
+      
+      const receipt = await tx.wait();
+      const event = receipt?.logs.find((log: any) => 
+        log.fragment?.name === "ProductCreated"
+      );
+      
+      productAddress = event?.args[0];
+      
+      // Get product contract
+      const Product = await ethers.getContractFactory("Product");
+      product = Product.attach(productAddress);
+      
+      // Upload agreement
+      await product.connect(seller).updateAgreement("https://example.com/agreement.pdf");
+      
+      // Create message for buyer to sign
+      const buyerMessage = `I agree to purchase "${name}" for ${price} wei`;
+      const buyerSignature = await buyer.signMessage(buyerMessage);
+      
+      // Purchase with valid signature
+      await product.connect(buyer).purchase(buyerSignature, { value: price });
+      
+      // Verify purchase was successful
+      expect(await product.isSold()).to.be.true;
+      expect(await product.buyerSignature()).to.equal(buyerSignature);
     });
 
     it("Should mint an NFT when creating a product", async function() {
@@ -91,11 +230,22 @@ describe("ProductFactory", function () {
       const royaltyPercentage = 500;
       const tokenURI = "https://example.com/metadata/1";
       const category = "Test Category";
-      const ipfsId = "QmHash123";
-
+      const imageUrl = "https://example.com/image.jpg";
+      
+      // Create message for seller to sign
+      const message = `I agree to list "${name}" for sale at ${ethers.formatEther(price)} ETH`;
+      const signature = await seller.signMessage(message);
+      
       // Create product
       const tx = await productFactory.connect(seller).createProduct(
-        name, description, price, royaltyPercentage, tokenURI, category, ipfsId
+        name,
+        description,
+        price,
+        royaltyPercentage,
+        tokenURI,
+        category,
+        imageUrl,
+        signature
       );
       
       const receipt = await tx.wait();
@@ -116,8 +266,20 @@ describe("ProductFactory", function () {
   describe("Factory Functionality", function() {
     beforeEach(async function() {
       // Create a product for testing
+      const name = "Test Product";
+      const price = ethers.parseEther("0.5");
+      const message = `I agree to list "${name}" for sale at ${ethers.formatEther(price)} ETH`;
+      const signature = await seller.signMessage(message);
+      
       const tx = await productFactory.connect(seller).createProduct(
-        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri", "Test Category", "QmHash123"
+        name, 
+        "Description", 
+        price, 
+        500, 
+        "uri", 
+        "Test Category", 
+        "https://example.com/image.jpg",
+        signature
       );
       const receipt = await tx.wait();
       const event = receipt?.logs.find((log: any) => 
@@ -152,12 +314,36 @@ describe("ProductFactory", function () {
 
     it("Should handle pagination in getProducts", async function() {
       // Create more products
-      await productFactory.connect(seller).createProduct(
-        "Product 2", "Description", ethers.parseEther("0.5"), 500, "uri2", "Test Category", "QmHash123"
-      );
+      const name2 = "Product 2";
+      const price2 = ethers.parseEther("0.5");
+      const message2 = `I agree to list "${name2}" for sale at ${ethers.formatEther(price2)} ETH`;
+      const signature2 = await seller.signMessage(message2);
       
       await productFactory.connect(seller).createProduct(
-        "Product 3", "Description", ethers.parseEther("0.5"), 500, "uri3", "Test Category", "QmHash123"
+        name2, 
+        "Description", 
+        price2, 
+        500, 
+        "uri2", 
+        "Test Category", 
+        "https://example.com/image2.jpg",
+        signature2
+      );
+      
+      const name3 = "Product 3";  
+      const price3 = ethers.parseEther("0.5");
+      const message3 = `I agree to list "${name3}" for sale at ${ethers.formatEther(price3)} ETH`;
+      const signature3 = await seller.signMessage(message3);
+      
+      await productFactory.connect(seller).createProduct(
+        name3, 
+        "Description", 
+        price3, 
+        500, 
+        "uri3", 
+        "Test Category", 
+        "https://example.com/image3.jpg",
+        signature3
       );
       
       // Test pagination
@@ -180,26 +366,46 @@ describe("ProductFactory", function () {
   describe("Product Purchase", function() {
     beforeEach(async function() {
       // Create a product for testing
+      const name = "Test Product";
+      const price = ethers.parseEther("0.5");
+      const message = `I agree to list "${name}" for sale at ${ethers.formatEther(price)} ETH`;
+      const signature = await seller.signMessage(message);
+      
       const tx = await productFactory.connect(seller).createProduct(
-        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri", "Test Category", "QmHash123"
+        name, 
+        "Description", 
+        price, 
+        500, 
+        "uri", 
+        "Test Category", 
+        "https://example.com/image.jpg",
+        signature
       );
       const receipt = await tx.wait();
       const event = receipt?.logs.find((log: any) => 
         log.fragment?.name === "ProductCreated"
       );
       productAddress = event?.args[0];
-      tokenId = event?.args[4];
       
       // Get product contract
       const Product = await ethers.getContractFactory("Product");
       product = Product.attach(productAddress);
+      
+      // Upload agreement before purchase
+      await product.connect(seller).updateAgreement("https://example.com/agreement.pdf");
     });
 
     it("Should not allow purchases with insufficient funds", async function() {
       const insufficientAmount = ethers.parseEther("0.1"); // Less than price
       
+      // Create message for buyer to sign
+      const name = await product.name();
+      const price = await product.price();
+      const buyerMessage = `I agree to purchase "${name}" for ${price} wei`;
+      const buyerSignature = await buyer.signMessage(buyerMessage);
+      
       await expect(
-        product.connect(buyer).purchase({ value: insufficientAmount })
+        product.connect(buyer).purchase(buyerSignature, { value: insufficientAmount })
       ).to.be.revertedWith("Product: Insufficient payment");
     });
 
@@ -207,8 +413,14 @@ describe("ProductFactory", function () {
       // Initial state
       expect(await product.isSold()).to.be.false;
       
+      // Create message for buyer to sign
+      const name = await product.name();
+      const price = await product.price();
+      const buyerMessage = `I agree to purchase "${name}" for ${price} wei`;
+      const buyerSignature = await buyer.signMessage(buyerMessage);
+      
       // Purchase
-      await product.connect(buyer).purchase({ value: ethers.parseEther("0.5") });
+      await product.connect(buyer).purchase(buyerSignature, { value: ethers.parseEther("0.5") });
       
       // Check sold state
       expect(await product.isSold()).to.be.true;
@@ -218,8 +430,14 @@ describe("ProductFactory", function () {
       // Get seller initial balance
       const sellerInitialBalance = await ethers.provider.getBalance(seller.address);
       
+      // Create message for buyer to sign
+      const name = await product.name();
+      const price = await product.price();
+      const buyerMessage = `I agree to purchase "${name}" for ${price} wei`;
+      const buyerSignature = await buyer.signMessage(buyerMessage);
+      
       // Purchase the product
-      await product.connect(buyer).purchase({ value: ethers.parseEther("0.5") });
+      await product.connect(buyer).purchase(buyerSignature, { value: ethers.parseEther("0.5") });
       
       // Check seller received payment (should increase)
       const sellerFinalBalance = await ethers.provider.getBalance(seller.address);
@@ -228,11 +446,18 @@ describe("ProductFactory", function () {
 
     it("Should handle NFT ownership transfer after purchase", async function() {
       // Check initial NFT ownership
+      const tokenId = await product.tokenId();
       expect(await productNFT.ownerOf(tokenId)).to.equal(seller.address);
+      
+      // Create message for buyer to sign
+      const name = await product.name();
+      const price = await product.price();
+      const buyerMessage = `I agree to purchase "${name}" for ${price} wei`;
+      const buyerSignature = await buyer.signMessage(buyerMessage);
       
       // Approve and purchase
       await productNFT.connect(seller).approve(buyer.address, tokenId);
-      await product.connect(buyer).purchase({ value: ethers.parseEther("0.5") });
+      await product.connect(buyer).purchase(buyerSignature, { value: ethers.parseEther("0.5") });
       
       // Transfer NFT (would be done by frontend)
       await productNFT.connect(buyer).transferFrom(seller.address, buyer.address, tokenId);
@@ -245,8 +470,20 @@ describe("ProductFactory", function () {
   describe("Product Modifications", function() {
     beforeEach(async function() {
       // Create a product for testing
+      const name = "Test Product";
+      const price = ethers.parseEther("0.5");
+      const message = `I agree to list "${name}" for sale at ${ethers.formatEther(price)} ETH`;
+      const signature = await seller.signMessage(message);
+      
       const tx = await productFactory.connect(seller).createProduct(
-        "Test Product", "Description", ethers.parseEther("0.5"), 500, "uri", "Test Category", "QmHash123"
+        name, 
+        "Description", 
+        price, 
+        500, 
+        "uri", 
+        "Test Category", 
+        "https://example.com/image.jpg",
+        signature
       );
       const receipt = await tx.wait();
       const event = receipt?.logs.find((log: any) => 
@@ -257,6 +494,9 @@ describe("ProductFactory", function () {
       // Get product contract
       const Product = await ethers.getContractFactory("Product");
       product = Product.attach(productAddress);
+      
+      // Upload agreement before purchase
+      await product.connect(seller).updateAgreement("https://example.com/agreement.pdf");
     });
 
     it("Should allow seller to update product price", async function() {
@@ -298,16 +538,27 @@ describe("ProductFactory", function () {
     });
 
     it("Should not allow updates after product is sold", async function() {
-      // Purchase the product
-      await product.connect(buyer).purchase({ value: ethers.parseEther("0.5") });
+      // Purchase the product first
+      const name = await product.name();
+      const price = await product.price();
+      const buyerMessage = `I agree to purchase "${name}" for ${price} wei`;
+      const buyerSignature = await buyer.signMessage(buyerMessage);
       
-      // Try to update after sold
+      await product.connect(buyer).purchase(buyerSignature, { value: ethers.parseEther("0.5") });
+      
+      // Try to update price
       await expect(
         product.connect(seller).updatePrice(ethers.parseEther("0.7"))
       ).to.be.revertedWith("Product: Already sold");
       
+      // Try to update description
       await expect(
-        product.connect(seller).updateDescription("New desc")
+        product.connect(seller).updateDescription("New description")
+      ).to.be.revertedWith("Product: Already sold");
+      
+      // Try to update agreement
+      await expect(
+        product.connect(seller).updateAgreement("https://example.com/new-agreement.pdf")
       ).to.be.revertedWith("Product: Already sold");
     });
   });
