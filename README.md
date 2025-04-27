@@ -45,7 +45,7 @@ Tech stack:
 
 ## System Architecture
 
-![NexAgreement Architecture](./architecture.png)
+![NexAgreement Architecture](./FlareArchitecture.png)
 
 The NexAgreement platform uses a multi-layered architecture:
 
