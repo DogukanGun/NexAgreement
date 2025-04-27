@@ -204,7 +204,7 @@ export default function ProductListingForm() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Product Image *
           </label>
-          <FileUploader onFileUploaded={handleFileUploaded} />
+          <FileUploader name="productImage" onFileUploaded={handleFileUploaded} />
           {formData.imageUrl && (
             <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden">
               <img 

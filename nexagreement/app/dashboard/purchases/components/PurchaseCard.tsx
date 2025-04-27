@@ -1,7 +1,13 @@
 import { Card, CardContent, CardFooter, CardTitle } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
-import { ipfsToHttp } from '@/app/utils/ipfs';
+// import { ipfsToHttp } from '@/app/utils/ipfs';
 import { getExplorerLink } from '@/app/utils/config';
+
+// Client-side implementation of ipfsToHttp
+const clientIpfsToHttp = (ipfsUrl: string): string => {
+  if (!ipfsUrl) return '';
+  return ipfsUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+};
 
 export type Purchase = {
   id: number;
@@ -28,6 +34,8 @@ export function PurchaseCard({ purchase, className = '' }: PurchaseCardProps) {
     Pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
     Failed: 'bg-red-500/20 text-red-400 border-red-500/30'
   };
+  
+  const ipfsHttpUrl = purchase.ipfsHash ? clientIpfsToHttp(purchase.ipfsHash) : '';
 
   return (
     <Card variant="hover" className={`${className}`}>
@@ -67,7 +75,7 @@ export function PurchaseCard({ purchase, className = '' }: PurchaseCardProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <a 
-              href={ipfsToHttp(purchase.ipfsHash)} 
+              href={ipfsHttpUrl} 
               target="_blank" 
               rel="noopener noreferrer"
               className="hover:underline"
@@ -108,7 +116,7 @@ export function PurchaseCard({ purchase, className = '' }: PurchaseCardProps) {
       <CardFooter>
         {purchase.ipfsHash ? (
           <a 
-            href={ipfsToHttp(purchase.ipfsHash)}
+            href={ipfsHttpUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1"

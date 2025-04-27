@@ -12,7 +12,7 @@ import { PinataSDK } from "pinata";
  * Generates a mock CID (Content Identifier) for IPFS
  * @returns A random string that resembles an IPFS CID
  */
-function generateMockCid(): string {
+async function generateMockCid(): Promise<string> {
   // Generate a random string that resembles a CIDv1 (base32)
   const chars = 'abcdefghijklmnopqrstuvwxyz234567';
   let cid = 'bafybeie';
@@ -59,10 +59,10 @@ export async function uploadToIPFS(
  * @param ipfsUrl The IPFS URL to convert
  * @returns The corresponding HTTP URL
  */
-export const ipfsToHttp = async (ipfsUrl: string): Promise<string> => {
+export async function ipfsToHttp(ipfsUrl: string): Promise<string> {
   if (!ipfsUrl) return '';
   return ipfsUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
-};
+}
 
 /**
  * Gets the file name from an IPFS URL

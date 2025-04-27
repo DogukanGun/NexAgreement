@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useBlockchain } from '@/app/providers/BlockchainProvider';
 import { Button } from './Button';
 
@@ -10,7 +10,7 @@ export function ProductCount() {
   const [isLoadingCount, setIsLoadingCount] = useState(false);
   const [countError, setCountError] = useState<string | null>(null);
 
-  const fetchProductCount = async () => {
+  const fetchProductCount = useCallback(async () => {
     if (!productFactoryContract || !isConnected) {
       return;
     }
@@ -28,13 +28,13 @@ export function ProductCount() {
     } finally {
       setIsLoadingCount(false);
     }
-  };
+  }, [productFactoryContract, isConnected]);
 
   useEffect(() => {
     if (isConnected && productFactoryContract) {
       fetchProductCount();
     }
-  }, [isConnected, productFactoryContract]);
+  }, [isConnected, productFactoryContract, fetchProductCount]);
 
   if (!isConnected) {
     return (

@@ -1,6 +1,12 @@
 import Link from 'next/link';
 import { Button } from '@/app/components/ui/Button';
-import { ipfsToHttp } from '@/app/utils/ipfs';
+// import { ipfsToHttp } from '@/app/utils/ipfs';
+
+// Client-side implementation of ipfsToHttp
+const clientIpfsToHttp = (ipfsUrl: string): string => {
+  if (!ipfsUrl) return '';
+  return ipfsUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+};
 
 export type Listing = {
   id: number;
@@ -20,6 +26,8 @@ export function ListingCard({
   listing: Listing;
   showCategory?: boolean;
 }) {
+  const ipfsHttpUrl = clientIpfsToHttp(listing.ipfsHash);
+  
   return (
     <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-colors">
       <div className="p-6">
@@ -56,7 +64,7 @@ export function ListingCard({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <a 
-              href={ipfsToHttp(listing.ipfsHash)} 
+              href={ipfsHttpUrl} 
               target="_blank" 
               rel="noopener noreferrer"
               className="hover:underline"
