@@ -1,7 +1,7 @@
 import { createCivicAuthPlugin } from "@civic/auth-web3/nextjs"
+import type { NextConfig } from "next";
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   images: {
     domains: ['tan-accurate-ant-19.mypinata.cloud'],
   },
@@ -11,9 +11,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 };
-
 const withCivicAuth = createCivicAuthPlugin({
-  clientId: process.env.NEXT_PUBLIC_CIVIC_KEY,
+  clientId: process.env.NEXT_PUBLIC_CIVIC_KEY || '3b2c1c54-7b14-47c3-bfca-8aaf351e5b77',
 });
 
-export default withCivicAuth(nextConfig); 
+export default withCivicAuth(nextConfig)
