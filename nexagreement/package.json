@@ -10,6 +10,8 @@
     "create-template": "ts-node scripts/createFormTemplate.ts"
   },
   "dependencies": {
+    "@civic/auth": "^0.5.4",
+    "@civic/auth-web3": "^0.5.8",
     "@langchain/core": "^0.1.24",
     "@langchain/langgraph": "^0.2.65",
     "@langchain/openai": "^0.0.14",

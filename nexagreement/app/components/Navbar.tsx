@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { MetaMaskConnect } from './ui/MetaMaskConnect';
+import { UserAuth } from './auth/UserAuth';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -25,18 +26,9 @@ export default function Navbar() {
   const renderDesktopNavLinks = useMemo(() => {
     if (!isInApp) {
       return (
-        <Link
-          href="/dashboard"
-          className="relative px-8 py-3 overflow-hidden rounded-xl"
-        >
-          <span className="relative z-10 text-white font-semibold">
-            Launch App
-          </span>
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-100 group-hover:opacity-80 transition-opacity" />
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-transparent animate-ripple" />
-          </div>
-        </Link>
+        <div className="flex items-center">
+          <UserAuth />
+        </div>
       );
     }
     
@@ -139,7 +131,12 @@ export default function Navbar() {
             {renderDesktopNavLinks}
           </div>
 
-
+          {/* User Auth */}
+          {isInApp && (
+            <div className="flex items-center">
+              <UserAuth />
+            </div>
+          )}
 
           {/* Mobile menu button */}
           <div className="md:hidden ml-4">

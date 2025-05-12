@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar";
 import Connector from "./components/Connector";
 import { WagmiProvider } from './providers/WagmiProvider';
 import { BlockchainProvider } from './providers/BlockchainProvider';
+import { CivicAuthProvider } from "@civic/auth-web3/nextjs";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,12 +24,14 @@ export default function RootLayout({
       <body className={inter.className}>
         <WagmiProvider>
           <BlockchainProvider>
+          <CivicAuthProvider>
             <Navbar />
             <div className="pt-16">
               <Connector>
                 {children}
               </Connector>
             </div>
+            </CivicAuthProvider>
           </BlockchainProvider>
         </WagmiProvider>
       </body>
